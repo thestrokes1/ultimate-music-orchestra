@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
@@ -5,8 +6,9 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
-const JWT_SECRET = 'your-secret-key-change-in-production';
+const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const DATABASE_PATH = process.env.DATABASE_PATH || './music_app.db';
 
 // Middleware
 app.use(express.json());
@@ -19,7 +21,7 @@ app.use('/api', (req, res, next) => {
 });
 
 // Database setup
-const db = new sqlite3.Database('./music_app.db');
+const db = new sqlite3.Database(DATABASE_PATH);
 
 // Initialize database tables
 db.serialize(() => {
