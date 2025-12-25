@@ -8,15 +8,25 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const DATABASE_PATH = process.env.DATABASE_PATH || './music_app.db';
+const DATABASE_PATH = process.env.DATABASE_PATH || path.join(__dirname, 'music_app.db');
+
 
 // Middleware
 app.use(express.json());
-app.use(express.static('.'));
+app.use(express.static(path.join(__dirname, 'public')));
+
+
+// Enhanced CORS configuration
 app.use('/api', (req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    
     next();
 });
 
@@ -315,6 +325,11 @@ app.post('/api/restore-symbols', authenticateToken, (req, res) => {
     });
 });
 
+// Simple test endpoint for debugging
+app.get('/api/test', (req, res) => {
+    res.json({ message: 'API is working', timestamp: new Date().toISOString() });
+});
+
 // Get global symbol statistics
 app.get('/api/symbols', authenticateToken, (req, res) => {
     const userId = req.user.id;
@@ -353,7 +368,7 @@ app.get('/api/symbols', authenticateToken, (req, res) => {
 
 // Serve music page
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'music_page.html'));
+    res.sendFile(path.join(__dirname, 'public', 'music_page.html'));
 });
 
 // Start server

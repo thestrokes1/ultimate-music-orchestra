@@ -1,11 +1,13 @@
 # Dependencies
 node_modules/
+node_modules
 
 # Environment variables
 .env
 
 # Database
 *.db
+music_app.db
 
 # OS / Editor
 .DS_Store

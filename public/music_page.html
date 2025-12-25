@@ -532,6 +532,8 @@
             this.setLoading(loginBtn, true);
             
             try {
+                console.log('Attempting login for user:', username);
+                
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: {
@@ -540,7 +542,59 @@
                     body: JSON.stringify({ username, password })
                 });
                 
-                const data = await response.json();
+                console.log('Login response status:', response.status);
+                console.log('Login response headers:', response.headers);
+                
+                // Check if response is ok before parsing
+                if (!response.ok) {
+                    let errorData;
+                    try {
+                        const text = await response.text();
+                        console.log('Error response text:', text);
+                        if (text && text.trim()) {
+                            try {
+                                errorData = JSON.parse(text);
+                                console.log('Error response data:', errorData);
+                            } catch (parseError) {
+                                console.error('Failed to parse error response JSON:', parseError);
+                                errorData = { error: `Server error (${response.status}): ${text}` };
+                            }
+                        } else {
+                            errorData = { error: `Server error (${response.status}): ${response.statusText}` };
+                        }
+                    } catch (textError) {
+                        console.error('Failed to read error response text:', textError);
+                        errorData = { error: `Server error (${response.status}): ${response.statusText}` };
+                    }
+                    throw new Error(errorData.error || 'Login failed');
+                }
+                
+                // Parse JSON response with comprehensive error handling
+                let data;
+                try {
+                    const text = await response.text();
+                    console.log('Raw response text:', text);
+                    
+                    if (!text || text.trim() === '') {
+                        throw new Error('Empty response from server');
+                    }
+                    
+                    try {
+                        data = JSON.parse(text);
+                        console.log('Successfully parsed JSON response:', data);
+                    } catch (parseError) {
+                        console.error('JSON parse error:', parseError);
+                        console.error('Response text that failed to parse:', text);
+                        console.error('Response status:', response.status);
+                        console.error('Response headers:', [...response.headers.entries()]);
+                        throw new Error(`Server returned invalid JSON: ${text.substring(0, 100)}...`);
+                    }
+                } catch (jsonError) {
+                    console.error('Response handling error:', jsonError);
+                    throw new Error(jsonError.message || 'Server returned invalid JSON response');
+                }
+                
+                console.log('Login response data:', data);
                 
                 if (response.ok) {
                     this.token = data.token;
@@ -559,10 +613,28 @@
                         }
                     }, 1000);
                 } else {
-                    this.showMessage(data.error || 'Login failed', 'error');
+                    // Handle specific error cases
+                    if (data.error === 'Invalid credentials') {
+                        this.showMessage('Invalid username or password. Please check your credentials and try again.', 'error');
+                    } else if (data.error === 'Username and password required') {
+                        this.showMessage('Please enter both username and password.', 'error');
+                    } else if (data.error) {
+                        this.showMessage(data.error, 'error');
+                    } else {
+                        this.showMessage('Login failed. Please try again.', 'error');
+                    }
                 }
             } catch (error) {
-                this.showMessage('Network error. Please try again.', 'error');
+                console.error('Login error:', error);
+                
+                // Provide more specific error messages
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    this.showMessage('Unable to connect to server. Please check your internet connection and try again.', 'error');
+                } else if (error.name === 'SyntaxError') {
+                    this.showMessage('Server returned invalid response. Please try again.', 'error');
+                } else {
+                    this.showMessage('An unexpected error occurred. Please try again.', 'error');
+                }
             } finally {
                 this.setLoading(loginBtn, false);
             }
@@ -597,6 +669,8 @@
             this.setLoading(registerBtn, true);
             
             try {
+                console.log('Attempting registration for user:', username);
+                
                 const response = await fetch('/api/register', {
                     method: 'POST',
                     headers: {
@@ -605,7 +679,59 @@
                     body: JSON.stringify({ username, password })
                 });
                 
-                const data = await response.json();
+                console.log('Registration response status:', response.status);
+                console.log('Registration response headers:', response.headers);
+                
+                // Check if response is ok before parsing
+                if (!response.ok) {
+                    let errorData;
+                    try {
+                        const text = await response.text();
+                        console.log('Error response text:', text);
+                        if (text && text.trim()) {
+                            try {
+                                errorData = JSON.parse(text);
+                                console.log('Error response data:', errorData);
+                            } catch (parseError) {
+                                console.error('Failed to parse error response JSON:', parseError);
+                                errorData = { error: `Server error (${response.status}): ${text}` };
+                            }
+                        } else {
+                            errorData = { error: `Server error (${response.status}): ${response.statusText}` };
+                        }
+                    } catch (textError) {
+                        console.error('Failed to read error response text:', textError);
+                        errorData = { error: `Server error (${response.status}): ${response.statusText}` };
+                    }
+                    throw new Error(errorData.error || 'Registration failed');
+                }
+                
+                // Parse JSON response with comprehensive error handling
+                let data;
+                try {
+                    const text = await response.text();
+                    console.log('Raw response text:', text);
+                    
+                    if (!text || text.trim() === '') {
+                        throw new Error('Empty response from server');
+                    }
+                    
+                    try {
+                        data = JSON.parse(text);
+                        console.log('Successfully parsed JSON response:', data);
+                    } catch (parseError) {
+                        console.error('JSON parse error:', parseError);
+                        console.error('Response text that failed to parse:', text);
+                        console.error('Response status:', response.status);
+                        console.error('Response headers:', [...response.headers.entries()]);
+                        throw new Error(`Server returned invalid JSON: ${text.substring(0, 100)}...`);
+                    }
+                } catch (jsonError) {
+                    console.error('Response handling error:', jsonError);
+                    throw new Error(jsonError.message || 'Server returned invalid JSON response');
+                }
+                
+                console.log('Registration response data:', data);
                 
                 if (response.ok) {
                     this.token = data.token;
@@ -624,10 +750,32 @@
                         }
                     }, 1000);
                 } else {
-                    this.showMessage(data.error || 'Registration failed', 'error');
+                    // Handle specific error cases
+                    if (data.error === 'Username already exists') {
+                        this.showMessage('Username already exists. Please choose a different username.', 'error');
+                    } else if (data.error === 'Username must be at least 3 characters') {
+                        this.showMessage('Username must be at least 3 characters long.', 'error');
+                    } else if (data.error === 'Password must be at least 6 characters') {
+                        this.showMessage('Password must be at least 6 characters long.', 'error');
+                    } else if (data.error === 'Username and password required') {
+                        this.showMessage('Please fill in all required fields.', 'error');
+                    } else if (data.error) {
+                        this.showMessage(data.error, 'error');
+                    } else {
+                        this.showMessage('Registration failed. Please try again.', 'error');
+                    }
                 }
             } catch (error) {
-                this.showMessage('Network error. Please try again.', 'error');
+                console.error('Registration error:', error);
+                
+                // Provide more specific error messages
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    this.showMessage('Unable to connect to server. Please check your internet connection and try again.', 'error');
+                } else if (error.name === 'SyntaxError') {
+                    this.showMessage('Server returned invalid response. Please try again.', 'error');
+                } else {
+                    this.showMessage('An unexpected error occurred. Please try again.', 'error');
+                }
             } finally {
                 this.setLoading(registerBtn, false);
             }
