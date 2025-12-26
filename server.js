@@ -35,6 +35,8 @@ const db = new sqlite3.Database(DATABASE_PATH);
 
 // Initialize database tables
 db.serialize(() => {
+    console.log('📁 Initializing database tables...');
+    
     // Users table
     db.run(`
         CREATE TABLE IF NOT EXISTS users (
@@ -43,7 +45,10 @@ db.serialize(() => {
             password TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
-    `);
+    `, (err) => {
+        if (err) console.error('❌ Error creating users table:', err);
+        else console.log('✅ Users table ready');
+    });
 
     // User symbol URLs table - stores all URLs permanently for each user
     db.run(`
@@ -54,7 +59,10 @@ db.serialize(() => {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
-    `);
+    `, (err) => {
+        if (err) console.error('❌ Error creating user_symbol_urls table:', err);
+        else console.log('✅ User symbol URLs table ready');
+    });
 
     // User saved symbols table - tracks saved state for each user
     db.run(`
@@ -65,7 +73,32 @@ db.serialize(() => {
             saved_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
-    `);
+    `, (err) => {
+        if (err) console.error('❌ Error creating user_saved_symbols table:', err);
+        else console.log('✅ User saved symbols table ready');
+    });
+
+    // GLOBAL URLs table (shared by everyone)
+    db.run(`
+        CREATE TABLE IF NOT EXISTS global_urls (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            url TEXT UNIQUE NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `, (err) => {
+        if (err) console.error('❌ Error creating global_urls table:', err);
+        else console.log('✅ Global URLs table ready');
+        
+        // Check if table exists and has data
+        db.all('SELECT COUNT(*) as count FROM global_urls', [], (err, rows) => {
+            if (err) {
+                console.error('❌ Error checking global_urls table:', err);
+            } else {
+                console.log(`🌍 Global URLs table has ${rows[0].count} URLs`);
+            }
+        });
+    });
+
 });
 
 // Generate 300 unique music symbols
@@ -258,76 +291,75 @@ app.post('/api/user/save-symbols', authenticateToken, (req, res) => {
     );
 });
 
-// Add URL to user's permanent collection
-app.post('/api/user/add-url', authenticateToken, (req, res) => {
-    const userId = req.user.id;
+// Add URL to GLOBAL pool (visible to everyone)
+app.post('/api/add-url', authenticateToken, (req, res) => {
     const { url } = req.body;
-    
+    console.log('🔗 Adding URL to global pool:', url);
+
     if (!url) {
+        console.log('❌ No URL provided');
         return res.status(400).json({ error: 'URL required' });
     }
-    
-    // Validate URL
+
     try {
         new URL(url);
-    } catch (e) {
+        console.log('✅ URL validation passed');
+    } catch {
+        console.log('❌ Invalid URL format');
         return res.status(400).json({ error: 'Invalid URL' });
     }
-    
+
     db.run(
-        'INSERT INTO user_symbol_urls (user_id, url) VALUES (?, ?)',
-        [userId, url],
-        function(err) {
+        'INSERT OR IGNORE INTO global_urls (url) VALUES (?)',
+        [url],
+        function (err) {
             if (err) {
-                return res.status(500).json({ error: 'Failed to add URL' });
+                console.error('❌ Database error adding URL:', err);
+                return res.status(500).json({ error: 'Failed to add URL: ' + err.message });
             }
             
-            res.json({ message: 'URL added successfully', url });
-        }
-    );
-});
-
-// Get all user URLs (for symbol assignment)
-app.get('/api/user/urls', authenticateToken, (req, res) => {
-    const userId = req.user.id;
-    
-    db.all(
-        'SELECT id, url FROM user_symbol_urls WHERE user_id = ?',
-        [userId],
-        (err, rows) => {
-            if (err) {
-                return res.status(500).json({ error: 'Database error' });
-            }
+            console.log('✅ URL added to global pool successfully');
+            console.log('📊 Insert result - Changes:', this.changes, 'LastID:', this.lastID);
             
-            res.json({ urls: rows });
-        }
-    );
-});
-
-// Restore all symbols (clear user's URLs and saved state)
-app.post('/api/restore-symbols', authenticateToken, (req, res) => {
-    const userId = req.user.id;
-    
-    db.serialize(() => {
-        db.run('DELETE FROM user_symbol_urls WHERE user_id = ?', [userId], function(err) {
-            if (err) {
-                return res.status(500).json({ error: 'Failed to clear URLs' });
-            }
-            
-            db.run('DELETE FROM user_saved_symbols WHERE user_id = ?', [userId], function(err2) {
-                if (err2) {
-                    return res.status(500).json({ error: 'Failed to clear saved symbols' });
+            // Verify the URL was actually added by checking the table
+            db.get('SELECT COUNT(*) as total FROM global_urls', [], (err, row) => {
+                if (!err) {
+                    console.log('🌍 Total URLs in global pool now:', row.total);
                 }
-                
-                res.json({ message: 'All symbols restored successfully' });
             });
-        });
-    });
+            
+            res.json({ 
+                message: 'URL added to global pool', 
+                url,
+                changes: this.changes 
+            });
+        }
+    );
 });
+
+
+
+
+// Global URLs system - no user-specific endpoints needed anymore
+// All URLs are now shared globally for everyone
 
 // Simple test endpoint for debugging
 app.get('/api/test', (req, res) => {
     res.json({ message: 'API is working', timestamp: new Date().toISOString() });
+});
+
+// 🌍 PUBLIC: Get all global URLs (no auth)
+app.get('/api/urls/public', (req, res) => {
+    db.all(
+        'SELECT id, url FROM global_urls ORDER BY id ASC LIMIT 300',
+        [],
+        (err, rows) => {
+            if (err) {
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ urls: rows });
+        }
+    );
 });
 
 // Get global symbol statistics
@@ -373,6 +405,10 @@ app.get('/', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`Music app server running on http://localhost:${PORT}`);
-    console.log(`Total music symbols available: ${allSymbols.length}`);
+    console.log(`🎵 Music app server running on http://localhost:${PORT}`);
+    console.log(`🎼 Total music symbols available: ${allSymbols.length}`);
+    console.log('🌍 GLOBAL URL SYSTEM: URLs are shared by everyone!');
+    console.log('🔗 Add URL endpoint: POST /api/add-url (requires auth)');
+    console.log('📡 Get URLs endpoint: GET /api/urls/public (no auth required)');
+    console.log('✅ Server is ready for testing!');
 });

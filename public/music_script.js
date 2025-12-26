@@ -57,11 +57,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
     initializeWelcomeMessage();
     generateMusicSymbols();
+    
+    // 🌍 IMMEDIATELY load global URLs - NO AUTHENTICATION REQUIRED
+    // Force reload to bypass any browser caching
+    setTimeout(() => {
+        console.log('🌍 Loading global URLs on page init (bypassing cache)...');
+        loadGlobalUrls();
+    }, 100);
+    
     startSymbolAnimations();
     initializeURLManager();
     setupEventListeners();
     
-    // Wait for AuthModal to be initialized, then load user data if authenticated
+    // Load user data if authenticated
     setTimeout(() => {
         if (window.authModal && window.authModal.isAuthenticated()) {
             loadUserData();
@@ -77,7 +85,11 @@ function onUserLogin() {
 
 function onUserLogout() {
     console.log('User logged out via AuthModal');
-    // Clear all symbol assignments
+    
+    // 🌍 AUTOMATICALLY reload global URLs after logout
+    console.log('🔄 User logged out - automatically loading global URLs...');
+    
+    // Clear all symbol assignments first
     currentSymbolAssignments.clear();
     userUrls = [];
     userSavedSymbolCount = 0;
@@ -90,72 +102,28 @@ function onUserLogout() {
         symbol.classList.remove('has-url');
     });
     
+    // 🌍 Automatically load global URLs to show all green symbols
+    // This ensures that after logout, users still see the global URL pool
+    setTimeout(() => {
+        console.log('🌍 Loading global URLs after logout...');
+        loadGlobalUrls();
+    }, 100);
+    
     updateSymbolStats();
 }
 
-// Load user data (URLs and saved symbols)
+// Load user data - now just updates display since URLs are global
 async function loadUserData() {
-    if (!window.authModal || !window.authModal.isAuthenticated()) return;
-    
-    const authData = window.authModal.getAuthData();
-    if (!authData.token) return;
-    
-    try {
-        // Load user's saved symbols count
-        const symbolResponse = await fetch('/api/user/symbols', {
-            headers: { 'Authorization': `Bearer ${authData.token}` }
-        });
-        
-        if (symbolResponse.ok) {
-            const symbolData = await symbolResponse.json();
-            userSavedSymbolCount = symbolData.savedSymbolCount;
-        }
-        
-        // Load user's URLs
-        const urlResponse = await fetch('/api/user/urls', {
-            headers: { 'Authorization': `Bearer ${authData.token}` }
-        });
-        
-        if (urlResponse.ok) {
-            const urlData = await urlResponse.json();
-            userUrls = urlData.urls || [];
-            
-            // Assign URLs to random symbols based on saved count
-            assignUrlsToSymbols();
-        }
-        
-    } catch (error) {
-        console.error('Error loading user data:', error);
-    }
-}
-
-// Assign URLs to random symbols
-function assignUrlsToSymbols() {
-    const symbolsToAssign = Math.min(userSavedSymbolCount, userUrls.length);
-    
-    if (symbolsToAssign === 0) {
-        updateSymbolStats();
-        return;
-    }
-    
-    const symbols = document.querySelectorAll('.music-symbol');
-    const shuffledSymbols = Array.from(symbols).sort(() => Math.random() - 0.5);
-    
-    // Assign URLs to random symbols
-    for (let i = 0; i < symbolsToAssign && i < userUrls.length && i < shuffledSymbols.length; i++) {
-        const symbol = shuffledSymbols[i];
-        const url = userUrls[i];
-        
-        symbol.dataset.link = url.url;
-        symbol.classList.add('has-url');
-        currentSymbolAssignments.set(symbol, url.url);
-    }
-    
-    currentGreenSymbols = symbolsToAssign;
+    console.log('Loading user data - URLs are now global for all users');
+    // No user-specific URLs to load anymore since we use global pool
     updateSymbolStats();
 }
 
-// Welcome Message System
+// Assign URLs to symbols - now handled by global loading
+function assignUrlsToSymbols() {
+    console.log('URL assignment is now handled globally for all users');
+    // Symbol assignment is now done by loadGlobalUrls()
+}
 function initializeWelcomeMessage() {
     const welcomeElement = document.getElementById('welcome-message');
     if (!welcomeElement) return;
@@ -389,8 +357,8 @@ async function handleAddUrlClick() {
     }
     
     try {
-        // Add URL to user's permanent collection
-        const response = await fetch('/api/user/add-url', {
+        // Add URL to GLOBAL pool (visible to everyone)
+        const response = await fetch('/api/add-url', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -400,18 +368,13 @@ async function handleAddUrlClick() {
         });
         
         if (response.ok) {
-            // Add URL to user's URL list
-            userUrls.push({ url: url, id: Date.now() }); // Temporary ID
+            // Reload global URLs to get the updated list
+            await loadGlobalUrls();
             
-            // Assign to a random empty symbol
-            assignUrlToRandomSymbol(url);
-            
-            // Clear input and update displays
+            // Clear input
             urlInput.value = '';
-            currentGreenSymbols++;
-            updateSymbolStats();
             
-            console.log('URL added and assigned to symbol:', url);
+            console.log('URL added to global pool:', url);
         } else {
             const error = await response.json();
             alert('Failed to add URL: ' + error.error);
@@ -477,42 +440,24 @@ async function saveCurrentSymbols() {
     }
 }
 
-// Restore all symbols - reload URLs from server and assign to make green symbols
+// Restore all symbols - reload GLOBAL URLs from server and assign to make green symbols
 async function restoreAllSymbols() {
-    console.log('🔄 RESTORE FUNCTION CALLED - RESTORING ALL URLS');
-    alert('DEBUG: Restore function called! Restoring ALL URLs to make them green.');
+    console.log('🔄 RESTORE FUNCTION CALLED - RESTORING ALL GLOBAL URLS');
+    alert('DEBUG: Restore function called! Restoring ALL global URLs to make them green.');
     
-    if (!window.authModal || !window.authModal.isAuthenticated()) {
-        console.log('❌ User not authenticated, showing modal');
-        window.authModal.show();
-        return;
-    }
-    
-    const authData = window.authModal.getAuthData();
-    if (!authData.token) {
-        console.log('❌ No auth token, showing modal');
-        window.authModal.show();
-        return;
-    }
-    
-    console.log('✅ User authenticated, proceeding with restore...');
+    console.log('✅ Loading global URLs for restore...');
     
     try {
-        // Get the user's URLs from server (permanent list)
-        console.log('📡 Fetching URLs from /api/user/urls');
-        const urlResponse = await fetch('/api/user/urls', {
-            headers: { 'Authorization': `Bearer ${authData.token}` }
-        });
+        // Get GLOBAL URLs from server (shared by everyone)
+        console.log('📡 Fetching GLOBAL URLs from /api/urls/public');
+        const urlResponse = await fetch('/api/urls/public');
         
         console.log('📡 URL Response status:', urlResponse.status);
         
         if (urlResponse.ok) {
             const urlData = await urlResponse.json();
             const serverUrls = urlData.urls || [];
-            console.log('📦 Received server URLs:', serverUrls);
-            
-            // Update user URLs from server
-            userUrls = serverUrls;
+            console.log('📦 Received global URLs:', serverUrls);
             
             // Get current state before restore
             const currentGreenCount = document.querySelectorAll('.music-symbol.has-url').length;
@@ -534,14 +479,14 @@ async function restoreAllSymbols() {
                 currentSymbolAssignments.delete(symbol);
             });
             
-            // Now assign ALL server URLs to empty symbols
-            console.log(`🔧 Assigning ALL ${serverUrls.length} URLs to make them green...`);
+            // Now assign ALL global URLs to empty symbols
+            console.log(`🔧 Assigning ALL ${serverUrls.length} global URLs to make them green...`);
             let urlIndex = 0;
             
             // Get fresh empty symbols after clearing
             const freshEmptySymbols = Array.from(document.querySelectorAll('.music-symbol:not(.has-url)'));
             
-            // Assign ALL URLs to empty symbols
+            // Assign ALL global URLs to empty symbols
             for (let i = 0; i < serverUrls.length && i < freshEmptySymbols.length; i++) {
                 const serverUrl = serverUrls[i];
                 const symbol = freshEmptySymbols[i];
@@ -561,12 +506,12 @@ async function restoreAllSymbols() {
             console.log('📈 Final state:', {
                 totalUrlsAssigned: urlIndex,
                 totalGreenSymbols: newGreenCount,
-                serverUrlsCount: serverUrls.length
+                globalUrlsCount: serverUrls.length
             });
             
             updateSymbolStats();
-            alert(`✅ RESTORE SUCCESS! Restored ALL ${urlIndex} URLs to make green symbols! (Total: ${currentGreenSymbols} green symbols)`);
-            console.log(`✅ RESTORE COMPLETED: All ${urlIndex} URLs restored to make green symbols`);
+            alert(`✅ RESTORE SUCCESS! Restored ALL ${urlIndex} global URLs to make green symbols! (Total: ${currentGreenSymbols} green symbols)`);
+            console.log(`✅ RESTORE COMPLETED: All ${urlIndex} global URLs restored to make green symbols`);
         } else {
             console.error('❌ Failed to fetch URLs:', urlResponse.status, urlResponse.statusText);
             alert('Failed to restore symbols. Please try again.');
@@ -579,20 +524,6 @@ async function restoreAllSymbols() {
 
 // Logout function
 function logout() {
-    // Clear all symbol assignments
-    currentSymbolAssignments.clear();
-    userUrls = [];
-    userSavedSymbolCount = 0;
-    currentGreenSymbols = 0;
-    
-    // Remove all URL assignments from symbols
-    const symbols = document.querySelectorAll('.music-symbol.has-url');
-    symbols.forEach(symbol => {
-        symbol.dataset.link = '';
-        symbol.classList.remove('has-url');
-    });
-    
-    updateSymbolStats();
     
     // Call AuthModal logout if available
     if (window.authModal) {
@@ -608,8 +539,10 @@ function updateSymbolStats() {
     const assignedCount = document.getElementById('assigned-count');
     const availableCount = document.getElementById('available-count');
     
+    // Show GLOBAL URL count (visible to everyone)
     if (urlCount) {
-        urlCount.textContent = `URLs in Pool: ${userUrls.length}`;
+        const globalCount = document.querySelectorAll('.music-symbol.has-url').length;
+        urlCount.textContent = `Global URLs: ${globalCount}`;
     }
     
     if (assignedCount) {
@@ -705,6 +638,88 @@ function restartOrchestra() {
         console.log('Orchestra restarted');
     }
 }
+
+// 🌍 Load GLOBAL URLs for everyone (visitors + users)
+async function loadGlobalUrls() {
+    try {
+        console.log('🌍 LOADING GLOBAL URLS - Starting fetch...');
+        
+        // Add cache-busting timestamp to prevent caching issues
+        const cacheBuster = Date.now();
+        const res = await fetch(`/api/urls/public?_=${cacheBuster}`);
+        console.log('🌍 LOADING GLOBAL URLS - Response status:', res.status);
+        
+        const data = await res.json();
+        console.log('🌍 LOADING GLOBAL URLS - Received data:', data);
+        console.log('🌍 LOADING GLOBAL URLS - URLs array:', data.urls);
+        console.log('🌍 LOADING GLOBAL URLS - URLs count:', data.urls ? data.urls.length : 0);
+
+        // Clear existing
+        console.log('🧹 CLEARING EXISTING SYMBOL ASSIGNMENTS');
+        document.querySelectorAll('.music-symbol').forEach(symbol => {
+            symbol.dataset.link = '';
+            symbol.classList.remove('has-url');
+        });
+
+        currentGreenSymbols = 0;
+
+        // Assign URLs to symbols
+        const symbols = document.querySelectorAll('.music-symbol');
+        console.log('🎯 TOTAL SYMBOLS AVAILABLE:', symbols.length);
+        
+        console.log('🔧 ASSIGNING URLS TO SYMBOLS');
+        data.urls.forEach((item, index) => {
+            if (symbols[index]) {
+                console.log(`✅ Assigning URL ${index + 1}: ${item.url} to symbol ${index + 1}`);
+                symbols[index].dataset.link = item.url;
+                symbols[index].classList.add('has-url');
+                currentGreenSymbols++;
+            } else {
+                console.log(`❌ No symbol available for URL ${index + 1}: ${item.url}`);
+            }
+        });
+
+        console.log('📊 FINAL ASSIGNMENT STATE:');
+        console.log('- Current green symbols:', currentGreenSymbols);
+        console.log('- Total URLs received:', data.urls.length);
+        console.log('- Total symbols available:', symbols.length);
+        
+        updateSymbolStats();
+        console.log('✅ GLOBAL URLS LOADING COMPLETE');
+        
+        // Force refresh stats after loading
+        setTimeout(() => {
+            console.log('🔄 Forcing stats refresh after global URL load...');
+            updateSymbolStats();
+        }, 50);
+        
+    } catch (err) {
+        console.error('❌ Failed to load global URLs', err);
+    }
+}
+
+// 🌍 Force reload global URLs (with cache busting)
+async function forceReloadGlobalUrls() {
+    console.log('🔄 FORCE RELOADING GLOBAL URLS - Clearing cache and reloading...');
+    
+    // Clear all symbol assignments first
+    console.log('🧹 FORCE CLEARING ALL SYMBOL ASSIGNMENTS');
+    document.querySelectorAll('.music-symbol').forEach(symbol => {
+        symbol.dataset.link = '';
+        symbol.classList.remove('has-url');
+    });
+    
+    currentGreenSymbols = 0;
+    updateSymbolStats();
+    
+    // Wait a moment then reload
+    setTimeout(() => {
+        console.log('🔄 Now reloading global URLs after clearing...');
+        loadGlobalUrls();
+    }, 100);
+}
+
+
 
 // Console log for debugging
 console.log('Enhanced Music Symbols Animation Script Loaded Successfully!');
