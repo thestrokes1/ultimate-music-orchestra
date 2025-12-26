@@ -484,6 +484,64 @@ app.delete('/api/urls/:id', authenticateAdmin, (req, res) => {
     );
 });
 
+// 👑 ADMIN: Set user as administrator
+app.post('/api/admin/set-admin', authenticateAdmin, (req, res) => {
+    const { username } = req.body;
+    
+    if (!username) {
+        return res.status(400).json({ error: 'Username required' });
+    }
+    
+    console.log('👑 Admin setting user as administrator:', username);
+    
+    db.run(
+        'UPDATE users SET is_admin = 1 WHERE username = ?',
+        [username],
+        function(err) {
+            if (err) {
+                console.error('❌ Error setting admin user:', err);
+                return res.status(500).json({ error: 'Failed to set admin: ' + err.message });
+            }
+            
+            if (this.changes === 0) {
+                console.log('❌ User not found:', username);
+                return res.status(404).json({ error: 'User not found' });
+            }
+            
+            console.log('✅ Admin user set successfully:', username);
+            
+            res.json({ 
+                message: 'User set as administrator successfully',
+                username: username,
+                changes: this.changes
+            });
+        }
+    );
+});
+
+// 🔧 DEBUG: Quick admin setup for thestrokes123 (can be called once)
+app.post('/api/admin/setup-thestrokes123', (req, res) => {
+    console.log('🔧 Setting up thestrokes123 as admin (debug endpoint)');
+    
+    db.run(
+        'UPDATE users SET is_admin = 1 WHERE username = ?',
+        ['thestrokes123'],
+        function(err) {
+            if (err) {
+                console.error('❌ Error setting admin user:', err);
+                return res.status(500).json({ error: 'Failed to set admin: ' + err.message });
+            }
+            
+            console.log('👑 thestrokes123 set as admin successfully. Changes:', this.changes);
+            
+            res.json({ 
+                message: 'thestrokes123 set as administrator',
+                changes: this.changes
+            });
+        }
+    );
+});
+
 // 🔑 ADMIN: Get all URLs with creator information
 app.get('/api/admin/urls', authenticateAdmin, (req, res) => {
     db.all(
