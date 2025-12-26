@@ -43,11 +43,23 @@ db.serialize(() => {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
+            is_admin INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `, (err) => {
         if (err) console.error('❌ Error creating users table:', err);
-        else console.log('✅ Users table ready');
+        else {
+            console.log('✅ Users table ready');
+            
+            // Add is_admin column if it doesn't exist (for existing databases)
+            db.run('ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0', (err) => {
+                if (err && !err.message.includes('duplicate column name')) {
+                    console.error('❌ Error adding is_admin column:', err);
+                } else {
+                    console.log('✅ is_admin column verified/added');
+                }
+            });
+        }
     });
 
     // User symbol URLs table - stores all URLs permanently for each user
@@ -83,7 +95,8 @@ db.serialize(() => {
         CREATE TABLE IF NOT EXISTS global_urls (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             url TEXT UNIQUE NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            created_by TEXT
         )
     `, (err) => {
         if (err) console.error('❌ Error creating global_urls table:', err);
@@ -97,6 +110,19 @@ db.serialize(() => {
                 console.log(`🌍 Global URLs table has ${rows[0].count} URLs`);
             }
         });
+
+        // Set thestrokes123 as administrator
+        db.run(
+            'UPDATE users SET is_admin = 1 WHERE username = ?',
+            ['thestrokes123'],
+            function(err) {
+                if (err) {
+                    console.error('❌ Error setting admin user:', err);
+                } else {
+                    console.log('👑 Admin user thestrokes123 set successfully');
+                }
+            }
+        );
     });
 
 });
@@ -150,6 +176,40 @@ function authenticateToken(req, res, next) {
         }
         req.user = user;
         next();
+    });
+}
+
+// Admin authentication middleware
+function authenticateAdmin(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ error: 'Access token required' });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.status(403).json({ error: 'Invalid token' });
+        }
+        
+        // Check if user is admin
+        db.get(
+            'SELECT is_admin FROM users WHERE id = ?',
+            [user.id],
+            (err, row) => {
+                if (err) {
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                
+                if (!row || !row.is_admin) {
+                    return res.status(403).json({ error: 'Admin access required' });
+                }
+                
+                req.user = { ...user, is_admin: true };
+                next();
+            }
+        );
     });
 }
 
@@ -294,7 +354,8 @@ app.post('/api/user/save-symbols', authenticateToken, (req, res) => {
 // Add URL to GLOBAL pool (visible to everyone)
 app.post('/api/add-url', authenticateToken, (req, res) => {
     const { url } = req.body;
-    console.log('🔗 Adding URL to global pool:', url);
+    const username = req.user.username; // Get current username
+    console.log('🔗 Adding URL to global pool:', url, 'by user:', username);
 
     if (!url) {
         console.log('❌ No URL provided');
@@ -310,8 +371,8 @@ app.post('/api/add-url', authenticateToken, (req, res) => {
     }
 
     db.run(
-        'INSERT OR IGNORE INTO global_urls (url) VALUES (?)',
-        [url],
+        'INSERT OR IGNORE INTO global_urls (url, created_by) VALUES (?, ?)',
+        [url, username],
         function (err) {
             if (err) {
                 console.error('❌ Database error adding URL:', err);
@@ -362,6 +423,87 @@ app.get('/api/urls/public', (req, res) => {
     );
 });
 
+// 🔑 ADMIN: Check admin status
+app.get('/api/admin/status', authenticateToken, (req, res) => {
+    const userId = req.user.id;
+    
+    db.get(
+        'SELECT is_admin FROM users WHERE id = ?',
+        [userId],
+        (err, row) => {
+            if (err) {
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            res.json({ 
+                isAdmin: row ? row.is_admin === 1 : false 
+            });
+        }
+    );
+});
+
+// 🗑️ ADMIN: Delete URL from global pool
+app.delete('/api/urls/:id', authenticateAdmin, (req, res) => {
+    const urlId = parseInt(req.params.id);
+    
+    if (!urlId || isNaN(urlId)) {
+        return res.status(400).json({ error: 'Invalid URL ID' });
+    }
+    
+    console.log('🗑️ Admin deleting URL with ID:', urlId);
+    
+    db.run(
+        'DELETE FROM global_urls WHERE id = ?',
+        [urlId],
+        function(err) {
+            if (err) {
+                console.error('❌ Error deleting URL:', err);
+                return res.status(500).json({ error: 'Failed to delete URL: ' + err.message });
+            }
+            
+            if (this.changes === 0) {
+                console.log('❌ URL not found with ID:', urlId);
+                return res.status(404).json({ error: 'URL not found' });
+            }
+            
+            console.log('✅ URL deleted successfully by admin. Changes:', this.changes);
+            
+            // Verify the deletion
+            db.get('SELECT COUNT(*) as total FROM global_urls', [], (err, row) => {
+                if (!err) {
+                    console.log('🌍 Total URLs in global pool now:', row.total);
+                }
+            });
+            
+            res.json({ 
+                message: 'URL deleted successfully by admin',
+                deletedId: urlId,
+                changes: this.changes
+            });
+        }
+    );
+});
+
+// 🔑 ADMIN: Get all URLs with creator information
+app.get('/api/admin/urls', authenticateAdmin, (req, res) => {
+    db.all(
+        'SELECT id, url, created_at, created_by FROM global_urls ORDER BY id ASC',
+        [],
+        (err, rows) => {
+            if (err) {
+                console.error('❌ Error fetching URLs for admin:', err);
+                return res.status(500).json({ error: 'Failed to fetch URLs: ' + err.message });
+            }
+            
+            console.log(`✅ Admin fetched ${rows.length} URLs with creator info`);
+            res.json({ 
+                urls: rows,
+                total: rows.length
+            });
+        }
+    );
+});
+
 // Get global symbol statistics
 app.get('/api/symbols', authenticateToken, (req, res) => {
     const userId = req.user.id;
@@ -396,6 +538,29 @@ app.get('/api/symbols', authenticateToken, (req, res) => {
             }
         );
     });
+});
+
+// 🧹 ADMIN: Clear all URLs from global pool
+app.delete('/api/admin/clear-all-urls', authenticateAdmin, (req, res) => {
+    console.log('🧹 Admin clearing all URLs from global pool');
+    
+    db.run(
+        'DELETE FROM global_urls',
+        [],
+        function(err) {
+            if (err) {
+                console.error('❌ Error clearing all URLs:', err);
+                return res.status(500).json({ error: 'Failed to clear URLs: ' + err.message });
+            }
+            
+            console.log('✅ All URLs cleared by admin. Changes:', this.changes);
+            
+            res.json({ 
+                message: 'All URLs cleared successfully by admin',
+                deletedCount: this.changes
+            });
+        }
+    );
 });
 
 // Serve music page
