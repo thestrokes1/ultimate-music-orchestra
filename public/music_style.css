@@ -1,20 +1,88 @@
 /* Music Symbols Animation Styles */
 
+* {
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+}
+
 body {
     margin: 0;
     padding: 0;
     background: linear-gradient(45deg, #1a1a2e, #16213e, #0f3460, #533483);
-    background-size: 400% 400%;
+    background-size: 100vw 100vh;
+    background-position: 0 0;
     animation: gradientShift 15s ease infinite;
     font-family: 'Arial', sans-serif;
     overflow-x: hidden;
     min-height: 100vh;
+    font-size: 1rem;
+    line-height: 1.5;
 }
 
+/* Responsive Background Animation */
 @keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    0% { 
+        background-position: 0% 0%; 
+        background-size: 100vw 100vh;
+    }
+    25% { 
+        background-position: 50% 25%; 
+        background-size: 100vw 100vh;
+    }
+    50% { 
+        background-position: 100% 50%; 
+        background-size: 100vw 100vh;
+    }
+    75% { 
+        background-position: 50% 75%; 
+        background-size: 100vw 100vh;
+    }
+    100% { 
+        background-position: 0% 100%; 
+        background-size: 100vw 100vh;
+    }
+}
+
+/* Responsive Background Scaling for different devices */
+@media (max-width: 768px) {
+    body {
+        background-size: 100vw 100vh;
+        animation-duration: 12s; /* Slightly faster on mobile */
+    }
+    
+    @keyframes gradientShift {
+        0% { 
+            background-position: 0% 0%; 
+            background-size: 100vw 100vh;
+        }
+        25% { 
+            background-position: 75% 20%; 
+            background-size: 100vw 100vh;
+        }
+        50% { 
+            background-position: 100% 50%; 
+            background-size: 100vw 100vh;
+        }
+        75% { 
+            background-position: 25% 80%; 
+            background-size: 100vw 100vh;
+        }
+        100% { 
+            background-position: 0% 100%; 
+            background-size: 100vw 100vh;
+        }
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        background-size: 100vw 100vh;
+        animation-duration: 10s; /* Even faster on small screens */
+    }
 }
 
 /* Welcome Message Styles - Shows ONLY ONCE for 3 seconds */
@@ -177,11 +245,44 @@ body {
     z-index: 10;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    min-width: 140px;
-    max-width: 160px;
+    min-width: clamp(140px, 20vw, 200px);
+    max-width: clamp(160px, 25vw, 250px);
     color: white;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(255, 107, 53, 0.15);
     overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+/* Responsive Manager Panel for Tablets */
+@media (max-width: 1024px) {
+    .unified-manager {
+        min-width: clamp(160px, 22vw, 220px);
+        max-width: clamp(180px, 28vw, 280px);
+    }
+}
+
+/* Mobile: Stack manager panel */
+@media (max-width: 768px) {
+    .unified-manager {
+        position: relative;
+        top: auto;
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
+        margin: 1rem auto;
+        width: min(95%, 400px);
+        min-width: 200px;
+        max-width: none;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+    .unified-manager {
+        width: 98%;
+        margin: 0.5rem auto;
+        border-radius: 10px;
+    }
 }
 
 /* Manager Header */
@@ -1258,10 +1359,12 @@ body {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+    /* Modal Responsiveness */
     .modal-content {
         margin: 10% auto;
         width: 95%;
         padding: 20px;
+        max-width: none;
     }
     
     .admin-modal-content {
@@ -1272,15 +1375,18 @@ body {
     
     .admin-modal-header {
         padding: 15px;
+        flex-direction: column;
+        gap: 10px;
     }
     
     .admin-modal-header h2 {
         font-size: 20px;
+        margin-bottom: 10px;
     }
     
     .admin-modal-body {
         padding: 15px;
-        max-height: calc(90vh - 80px);
+        max-height: calc(90vh - 120px);
     }
     
     .admin-urls-actions {
@@ -1297,11 +1403,13 @@ body {
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
+        padding: 12px;
     }
     
     .admin-url-meta {
         width: 100%;
         justify-content: space-between;
+        gap: 8px;
     }
     
     .user-status {
@@ -1311,6 +1419,7 @@ body {
         top: auto;
         display: block;
         text-align: center;
+        max-width: 300px;
     }
     
     .symbol-controls {
@@ -1319,5 +1428,264 @@ body {
         left: auto;
         bottom: auto;
         width: fit-content;
+        max-width: 280px;
+    }
+    
+    /* Font Scaling for Mobile */
+    .auth-form h2 {
+        font-size: clamp(20px, 5vw, 24px);
+    }
+    
+    .form-group label {
+        font-size: clamp(12px, 3.5vw, 14px);
+    }
+    
+    .form-group input {
+        font-size: clamp(14px, 4vw, 16px);
+        padding: clamp(8px, 2.5vw, 10px);
+    }
+    
+    .auth-btn {
+        font-size: clamp(14px, 4vw, 16px);
+        padding: clamp(10px, 3vw, 12px);
+    }
+    
+    /* Manager Panel Mobile Optimizations */
+    .manager-header {
+        padding: clamp(6px, 2vw, 10px);
+    }
+    
+    .manager-header h3 {
+        font-size: clamp(14px, 4vw, 18px);
+    }
+    
+    .toggle-btn {
+        width: clamp(30px, 8vw, 35px);
+        height: clamp(30px, 8vw, 35px);
+        font-size: clamp(14px, 4vw, 16px);
+    }
+    
+    .always-visible-section {
+        padding: clamp(8px, 2.5vw, 12px);
+    }
+    
+    .url-input-container {
+        gap: clamp(6px, 2vw, 10px);
+    }
+    
+    #url-input {
+        font-size: clamp(12px, 3.5vw, 14px);
+        padding: clamp(8px, 2.5vw, 12px);
+    }
+    
+    .add-url-btn {
+        font-size: clamp(12px, 3.5vw, 14px);
+        padding: clamp(8px, 2.5vw, 12px);
+    }
+    
+    .manager-content {
+        padding: clamp(8px, 2.5vw, 12px);
+    }
+    
+    .stat-label {
+        font-size: clamp(12px, 3.5vw, 14px);
+    }
+    
+    .stat-value {
+        font-size: clamp(14px, 4vw, 16px);
+    }
+    
+    .admin-status {
+        font-size: clamp(12px, 3.5vw, 14px);
+        padding: clamp(4px, 1.5vw, 8px) clamp(8px, 2.5vw, 12px);
+    }
+    
+    .admin-crown {
+        font-size: clamp(16px, 4.5vw, 18px);
+    }
+    
+    .admin-header h4 {
+        font-size: clamp(12px, 3.5vw, 14px);
+    }
+    
+    .admin-btn {
+        font-size: clamp(11px, 3vw, 12px);
+        padding: clamp(8px, 2.5vw, 12px);
+    }
+    
+    .admin-btn .btn-icon {
+        font-size: clamp(14px, 4vw, 16px);
+    }
+    
+    .admin-btn .btn-text {
+        font-size: clamp(11px, 3vw, 12px);
+    }
+    
+    /* Control Buttons Mobile */
+    .control-btn {
+        font-size: clamp(11px, 3vw, 13px);
+        padding: clamp(6px, 2vw, 8px);
+    }
+    
+    .control-btn .btn-icon {
+        font-size: clamp(18px, 5vw, 20px);
+    }
+    
+    .control-btn .btn-text {
+        font-size: clamp(10px, 2.8vw, 11px);
+    }
+    
+    /* Touch-friendly interactions */
+    .toggle-btn,
+    .add-url-btn,
+    .auth-btn,
+    .admin-btn,
+    .control-btn,
+    .admin-close,
+    .close-modal {
+        min-height: 44px; /* Apple guidelines */
+        min-width: 44px;
+    }
+    
+    /* Back link mobile optimization */
+    .back-link {
+        padding: clamp(8px, 2.5vw, 12px) clamp(16px, 4vw, 20px);
+        font-size: clamp(12px, 3.5vw, 14px);
+        top: clamp(10px, 3vw, 20px);
+        left: clamp(10px, 3vw, 20px);
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+    /* Ultra-compact layout for very small screens */
+    .unified-manager {
+        width: 98%;
+        margin: 0.5rem auto;
+        border-radius: 10px;
+    }
+    
+    .modal-content {
+        margin: 5% auto;
+        padding: 15px;
+        border-radius: 12px;
+    }
+    
+    .admin-modal-content {
+        margin: 2% auto;
+        max-height: 96vh;
+        border-radius: 12px;
+    }
+    
+    .admin-modal-header {
+        padding: 12px;
+    }
+    
+    .admin-modal-body {
+        padding: 12px;
+        max-height: calc(96vh - 100px);
+    }
+    
+    /* Further font size reductions for small screens */
+    .welcome-text {
+        font-size: clamp(18px, 8vw, 24px);
+    }
+    
+    .music-symbol {
+        font-size: clamp(16px, 6vw, 20px);
+    }
+    
+    .auth-form h2 {
+        font-size: clamp(18px, 6vw, 22px);
+    }
+    
+    .manager-header h3 {
+        font-size: clamp(12px, 5vw, 16px);
+    }
+    
+    .admin-modal-header h2 {
+        font-size: clamp(16px, 5.5vw, 18px);
+    }
+    
+    /* Stack admin URLs meta for small screens */
+    .admin-url-meta {
+        flex-direction: column;
+        gap: 6px;
+        align-items: flex-start;
+    }
+    
+    /* Compact form elements */
+    .form-group {
+        margin-bottom: 12px;
+    }
+    
+    .form-group label {
+        margin-bottom: 4px;
+    }
+    
+    /* Smaller admin status indicator */
+    .admin-status {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+    
+    .admin-crown {
+        font-size: 14px;
+    }
+    
+    /* Compact control buttons */
+    .control-buttons-section {
+        gap: 4px;
+    }
+    
+    .control-btn {
+        padding: 6px 4px;
+    }
+}
+
+/* Large screens optimization */
+@media (min-width: 1200px) {
+    .unified-manager {
+        min-width: clamp(200px, 18vw, 280px);
+        max-width: clamp(250px, 22vw, 320px);
+    }
+    
+    .manager-header h3 {
+        font-size: clamp(18px, 2vw, 22px);
+    }
+    
+    .admin-modal-header h2 {
+        font-size: clamp(24px, 2.5vw, 28px);
+    }
+    
+    .admin-url-item {
+        padding: 18px;
+    }
+}
+
+/* Landscape mobile optimization */
+@media (max-width: 768px) and (orientation: landscape) {
+    .modal-content {
+        margin: 5% auto;
+        max-height: 90vh;
+    }
+    
+    .admin-modal-content {
+        margin: 2% auto;
+        max-height: 96vh;
+    }
+    
+    .admin-modal-body {
+        max-height: calc(96vh - 80px);
+    }
+}
+
+/* High DPI displays optimization */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .music-symbol,
+    .admin-crown,
+    .btn-icon {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 }

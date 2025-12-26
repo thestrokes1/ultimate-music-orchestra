@@ -198,7 +198,7 @@ function generateMusicSymbols() {
     }, 100);
 }
 
-// Create a single music symbol
+// Create a single music symbol - fully responsive
 function createMusicSymbol(symbol, index, initial = false) {
     const container = document.getElementById('music-symbols-container');
     if (!container) return;
@@ -212,16 +212,28 @@ function createMusicSymbol(symbol, index, initial = false) {
     // Store individual movement characteristics
     symbolElement.dataset.speed = (0.3 + Math.random() * 0.7).toString();
     symbolElement.dataset.startOffset = (Math.random() * 3).toString();
-    symbolElement.dataset.baseX = (Math.random() * (1920 - 100) + 50).toString();
-    symbolElement.dataset.baseY = (Math.random() * (1080 - 100) + 50).toString();
+    
+    // Store NORMALIZED coordinates (0-1 range) - this is the key to responsiveness!
+    symbolElement.dataset.baseXNormalized = (Math.random() * 0.9 + 0.05).toString(); // 5% to 95%
+    symbolElement.dataset.baseYNormalized = (Math.random() * 0.9 + 0.05).toString(); // 5% to 95%
     symbolElement.dataset.phase = (Math.random() * Math.PI * 2).toString();
     
-    // Set initial position
-    const baseX = parseFloat(symbolElement.dataset.baseX);
-    const baseY = parseFloat(symbolElement.dataset.baseY);
+    // Set initial position using current viewport
+    const currentWidth = window.innerWidth;
+    const currentHeight = window.innerHeight;
     
-    symbolElement.style.left = baseX + 'px';
-    symbolElement.style.top = baseY + 'px';
+    const baseXNormalized = parseFloat(symbolElement.dataset.baseXNormalized);
+    const baseYNormalized = parseFloat(symbolElement.dataset.baseYNormalized);
+    
+    const baseX = baseXNormalized * currentWidth;
+    const baseY = baseYNormalized * currentHeight;
+    
+    // Ensure symbols start within viewport bounds
+    const safeX = Math.max(25, Math.min(currentWidth - 25, baseX));
+    const safeY = Math.max(25, Math.min(currentHeight - 25, baseY));
+    
+    symbolElement.style.left = safeX + 'px';
+    symbolElement.style.top = safeY + 'px';
     
     // Add click event listener
     symbolElement.addEventListener('click', function() {
@@ -260,12 +272,13 @@ function handleSymbolClick(symbolElement) {
     }
 }
 
-// Enhanced symbol animations
+// Adaptive symbol animations - truly responsive universe
 function startSymbolAnimations() {
     function animateSymbols() {
         const symbols = document.querySelectorAll('.music-symbol');
-        const windowWidth = 1920;
-        const windowHeight = 1080;
+        // Get ACTUAL viewport dimensions - not hardcoded!
+        const currentWidth = window.innerWidth;
+        const currentHeight = window.innerHeight;
         const time = Date.now() * 0.00002;
         
         symbols.forEach((symbol, index) => {
@@ -275,14 +288,33 @@ function startSymbolAnimations() {
             
             const speed = parseFloat(symbol.dataset.speed);
             const startOffset = parseFloat(symbol.dataset.startOffset);
-            const baseX = parseFloat(symbol.dataset.baseX);
-            const baseY = parseFloat(symbol.dataset.baseY);
             const phase = parseFloat(symbol.dataset.phase);
             
-            const horizontalDistance = (time + startOffset) * speed;
-            const verticalDistance = (time + startOffset + phase) * speed * 0.8;
+            // Normalize base coordinates to current viewport (0-1 range)
+            let baseXNormalized = parseFloat(symbol.dataset.baseXNormalized);
+            let baseYNormalized = parseFloat(symbol.dataset.baseYNormalized);
             
-            const maxHorizontalDistance = windowWidth - 100;
+            // If coordinates are not normalized yet, convert from old system
+            if (isNaN(baseXNormalized) || isNaN(baseYNormalized)) {
+                // Convert old hardcoded coordinates to normalized ones
+                const oldBaseX = parseFloat(symbol.dataset.baseX) || 1000;
+                const oldBaseY = parseFloat(symbol.dataset.baseY) || 500;
+                baseXNormalized = oldBaseX / 1920; // Normalize from old 1920x1080
+                baseYNormalized = oldBaseY / 1080;
+                
+                // Store normalized coordinates
+                symbol.dataset.baseXNormalized = baseXNormalized.toString();
+                symbol.dataset.baseYNormalized = baseYNormalized.toString();
+            }
+            
+            // Convert normalized coordinates to current viewport pixels
+            const currentBaseX = baseXNormalized * currentWidth;
+            const currentBaseY = baseYNormalized * currentHeight;
+            
+            const horizontalDistance = (time + startOffset) * speed * 100;
+            const verticalDistance = (time + startOffset + phase) * speed * 80;
+            
+            const maxHorizontalDistance = currentWidth - 100;
             const horizontalCycles = Math.floor(horizontalDistance / maxHorizontalDistance);
             const horizontalCycleDistance = horizontalDistance % maxHorizontalDistance;
             
@@ -290,10 +322,10 @@ function startSymbolAnimations() {
             if (horizontalCycles % 2 === 0) {
                 moveX = 50 + horizontalCycleDistance;
             } else {
-                moveX = windowWidth - 50 - horizontalCycleDistance;
+                moveX = currentWidth - 50 - horizontalCycleDistance;
             }
             
-            const maxVerticalDistance = windowHeight - 100;
+            const maxVerticalDistance = currentHeight - 100;
             const verticalCycles = Math.floor(verticalDistance / maxVerticalDistance);
             const verticalCycleDistance = verticalDistance % maxVerticalDistance;
             
@@ -301,8 +333,12 @@ function startSymbolAnimations() {
             if (verticalCycles % 2 === 0) {
                 moveY = 50 + verticalCycleDistance;
             } else {
-                moveY = windowHeight - 50 - verticalCycleDistance;
+                moveY = currentHeight - 50 - verticalCycleDistance;
             }
+            
+            // Ensure symbols stay within current viewport
+            moveX = Math.max(25, Math.min(currentWidth - 25, moveX));
+            moveY = Math.max(25, Math.min(currentHeight - 25, moveY));
             
             symbol.style.left = moveX + 'px';
             symbol.style.top = moveY + 'px';
@@ -573,24 +609,211 @@ function setupEventListeners() {
         }
     });
     
-    window.addEventListener('resize', function() {
+    // Enhanced resize listener for fluid background animation
+    setupResponsiveBackground();
+    
+    // ADAPTIVE RESIZE LISTENER - Creates expanding universe effect
+    let resizeTimeout;
+    let lastViewportWidth = window.innerWidth;
+    let lastViewportHeight = window.innerHeight;
+    
+    function handleAdaptiveResize() {
+        const currentWidth = window.innerWidth;
+        const currentHeight = window.innerHeight;
         const symbols = document.querySelectorAll('.music-symbol');
         
-        symbols.forEach(symbol => {
-            const rect = symbol.getBoundingClientRect();
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
+        // Detect significant viewport changes (expansion/contraction)
+        const widthChange = Math.abs(currentWidth - lastViewportWidth);
+        const heightChange = Math.abs(currentHeight - lastViewportHeight);
+        const isSignificantChange = widthChange > 50 || heightChange > 50;
+        
+        if (isSignificantChange) {
+            console.log(`🔄 VIEWPORT CHANGE: ${lastViewportWidth}x${lastViewportHeight} → ${currentWidth}x${currentHeight}`);
             
-            if (rect.right > windowWidth || rect.bottom > windowHeight) {
-                const newX = Math.random() * (windowWidth - 80) + 40;
-                const newY = Math.random() * (windowHeight - 80) + 40;
+            // For EXPANDING viewport - let some symbols migrate to new areas
+            if (currentWidth > lastViewportWidth || currentHeight > lastViewportHeight) {
+                const expansionRatio = Math.max(currentWidth / lastViewportWidth, currentHeight / lastViewportHeight);
+                const symbolsToRelocate = Math.floor(symbols.length * 0.1 * (expansionRatio - 1)); // 10% per expansion factor
                 
-                symbol.style.left = newX + 'px';
-                symbol.style.top = newY + 'px';
+                for (let i = 0; i < symbolsToRelocate && i < symbols.length; i++) {
+                    const randomSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+                    
+                    // Create new normalized coordinates for the newly exposed areas
+                    const newNormalizedX = Math.random() * 0.9 + 0.05;
+                    const newNormalizedY = Math.random() * 0.9 + 0.05;
+                    
+                    randomSymbol.dataset.baseXNormalized = newNormalizedX.toString();
+                    randomSymbol.dataset.baseYNormalized = newNormalizedY.toString();
+                    
+                    console.log(`🎯 Relocated symbol to new area: ${newNormalizedX.toFixed(2)}, ${newNormalizedY.toFixed(2)}`);
+                }
             }
-        });
+            
+            // For ALL resizes - ensure symbols stay within bounds and recalculate positions
+            symbols.forEach(symbol => {
+                const rect = symbol.getBoundingClientRect();
+                
+                // If symbol is outside new bounds, reposition it
+                if (rect.right > currentWidth || rect.bottom > currentHeight || 
+                    rect.left < 0 || rect.top < 0) {
+                    
+                    const baseXNormalized = parseFloat(symbol.dataset.baseXNormalized) || 0.5;
+                    const baseYNormalized = parseFloat(symbol.dataset.baseYNormalized) || 0.5;
+                    
+                    const newX = baseXNormalized * currentWidth;
+                    const newY = baseYNormalized * currentHeight;
+                    
+                    const safeX = Math.max(25, Math.min(currentWidth - 25, newX));
+                    const safeY = Math.max(25, Math.min(currentHeight - 25, newY));
+                    
+                    symbol.style.left = safeX + 'px';
+                    symbol.style.top = safeY + 'px';
+                    
+                    console.log(`📍 Repositioned symbol to: ${safeX.toFixed(0)}, ${safeY.toFixed(0)}`);
+                }
+            });
+            
+            lastViewportWidth = currentWidth;
+            lastViewportHeight = currentHeight;
+        }
+        
+        // Always update responsive background
+        updateResponsiveBackground();
+    }
+    
+    // Main resize listener with debouncing
+    window.addEventListener('resize', debounce(function() {
+        handleAdaptiveResize();
+    }, 150));
+    
+    // Orientation change detection for mobile
+    window.addEventListener('orientationchange', function() {
+        setTimeout(() => {
+            console.log('📱 Orientation changed, recalculating universe...');
+            handleAdaptiveResize();
+        }, 100);
     });
+    
+    // Initial viewport tracking
+    lastViewportWidth = window.innerWidth;
+    lastViewportHeight = window.innerHeight;
 }
+
+// Responsive Background Animation System
+function setupResponsiveBackground() {
+    let resizeTimeout;
+    let isResizing = false;
+    
+    // Initialize background animation parameters
+    updateResponsiveBackground();
+    
+    // Create a dynamic background animation controller
+    const body = document.body;
+    let animationPhase = 0;
+    
+    function animateBackground() {
+        animationPhase += 0.001;
+        const currentTime = Date.now() * 0.001;
+        
+        // Dynamic background position based on viewport and time
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // Create more fluid movement patterns
+        const posX = (Math.sin(currentTime * 0.5) + 1) * 50; // 0-100%
+        const posY = (Math.cos(currentTime * 0.3) + 1) * 50; // 0-100%
+        
+        // Adjust animation speed based on viewport size
+        let animationSpeed = 1;
+        if (viewportWidth < 768) {
+            animationSpeed = 1.3; // Faster on mobile
+        } else if (viewportWidth < 480) {
+            animationSpeed = 1.6; // Even faster on small screens
+        }
+        
+        // Apply dynamic background positioning
+        body.style.backgroundPosition = `${posX}% ${posY}%`;
+        
+        // Update animation duration based on viewport
+        const baseDuration = 15; // Base 15 seconds
+        const adjustedDuration = baseDuration / animationSpeed;
+        
+        if (body.style.animationDuration !== `${adjustedDuration}s`) {
+            body.style.animationDuration = `${adjustedDuration}s`;
+        }
+        
+        requestAnimationFrame(animateBackground);
+    }
+    
+    // Start the dynamic background animation
+    animateBackground();
+}
+
+function updateResponsiveBackground() {
+    const body = document.body;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Ensure background always covers viewport
+    body.style.backgroundSize = '100vw 100vh';
+    
+    // Adjust animation parameters based on viewport
+    let animationDuration = 15; // Base duration
+    
+    if (viewportWidth < 768) {
+        animationDuration = 12; // Faster on mobile
+    } else if (viewportWidth < 480) {
+        animationDuration = 10; // Even faster on small screens
+    }
+    
+    // Update animation duration
+    body.style.animationDuration = `${animationDuration}s`;
+    
+    // Adjust gradient intensity based on viewport
+    let gradientIntensity = '400% 400%';
+    if (viewportWidth < 768) {
+        gradientIntensity = '200% 200%'; // Less intensive on mobile
+    } else if (viewportWidth > 1200) {
+        gradientIntensity = '600% 600%'; // More intensive on large screens
+    }
+    
+    // Force background recalculation for immediate visual feedback
+    body.style.background = body.style.background;
+    
+    console.log(`Background updated for viewport: ${viewportWidth}x${viewportHeight}, duration: ${animationDuration}s`);
+}
+
+// Debounce function to prevent excessive resize events
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Touch device optimization for background
+function setupTouchOptimization() {
+    if ('ontouchstart' in window) {
+        document.body.classList.add('touch-device');
+        
+        // Reduce animation intensity on touch devices for better performance
+        const style = document.createElement('style');
+        style.textContent = `
+            .touch-device body {
+                animation-duration: 20s !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+// Initialize touch optimization
+setupTouchOptimization();
 
 // Close authentication modal
 function closeAuthModal() {
