@@ -97,7 +97,7 @@ async function loadUserData() {
     updateSymbolStats();
 }
 
-// Check admin status
+// Check admin status - enhanced with JWT token support
 async function checkAdminStatus() {
     try {
         const authData = window.authModal.getAuthData();
@@ -107,6 +107,20 @@ async function checkAdminStatus() {
             return;
         }
         
+        // First, try to decode admin status from JWT token (faster)
+        try {
+            const tokenPayload = JSON.parse(atob(authData.token.split('.')[1]));
+            if (tokenPayload.is_admin === true || tokenPayload.is_admin === 1) {
+                isAdmin = true;
+                console.log('✅ Admin status detected from JWT token:', isAdmin);
+                updateAdminUI();
+                return;
+            }
+        } catch (tokenError) {
+            console.log('Could not decode admin status from token, checking database...');
+        }
+        
+        // Fallback to database check if token doesn't have admin info
         const response = await fetch('/api/admin/status', {
             method: 'GET',
             headers: {
@@ -117,9 +131,10 @@ async function checkAdminStatus() {
         if (response.ok) {
             const data = await response.json();
             isAdmin = data.isAdmin;
-            console.log('Admin status:', isAdmin);
+            console.log('✅ Admin status from database:', isAdmin);
         } else {
             isAdmin = false;
+            console.log('❌ Admin status check failed');
         }
     } catch (error) {
         console.error('Error checking admin status:', error);

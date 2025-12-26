@@ -111,18 +111,8 @@ db.serialize(() => {
             }
         });
 
-        // Set thestrokes123 as administrator
-        db.run(
-            'UPDATE users SET is_admin = 1 WHERE username = ?',
-            ['thestrokes123'],
-            function(err) {
-                if (err) {
-                    console.error('❌ Error setting admin user:', err);
-                } else {
-                    console.log('👑 Admin user thestrokes123 set successfully');
-                }
-            }
-        );
+        // Create preset admin user CristianAdmin/CristianAdmin
+        createPresetAdminUser();
     });
 
 });
@@ -193,24 +183,92 @@ function authenticateAdmin(req, res, next) {
             return res.status(403).json({ error: 'Invalid token' });
         }
         
-        // Check if user is admin
+        // Enhanced admin check - prioritize JWT token admin flag, fallback to database
+        const isAdminFromToken = user.is_admin === true || user.is_admin === 1;
+        
+        if (isAdminFromToken) {
+            // Token indicates admin - trust it
+            req.user = { ...user, is_admin: true };
+            next();
+        } else {
+            // Double-check with database for security
+            db.get(
+                'SELECT is_admin FROM users WHERE id = ?',
+                [user.id],
+                (err, row) => {
+                    if (err) {
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+                    
+                    if (!row || !row.is_admin) {
+                        return res.status(403).json({ error: 'Admin access required' });
+                    }
+                    
+                    req.user = { ...user, is_admin: true };
+                    next();
+                }
+            );
+        }
+    });
+}
+
+// Create preset admin user CristianAdmin/CristianAdmin
+async function createPresetAdminUser() {
+    const adminUsername = 'CristianAdmin';
+    const adminPassword = 'CristianAdmin';
+    
+    try {
+        // Check if admin user already exists
         db.get(
-            'SELECT is_admin FROM users WHERE id = ?',
-            [user.id],
-            (err, row) => {
+            'SELECT id, is_admin FROM users WHERE username = ?',
+            [adminUsername],
+            async (err, existingUser) => {
                 if (err) {
-                    return res.status(500).json({ error: 'Database error' });
+                    console.error('❌ Error checking existing admin user:', err);
+                    return;
                 }
                 
-                if (!row || !row.is_admin) {
-                    return res.status(403).json({ error: 'Admin access required' });
+                if (existingUser) {
+                    // User exists, ensure they are admin
+                    if (existingUser.is_admin) {
+                        console.log('✅ Preset admin user CristianAdmin already exists and is admin');
+                    } else {
+                        // Set existing user as admin
+                        db.run(
+                            'UPDATE users SET is_admin = 1 WHERE username = ?',
+                            [adminUsername],
+                            (err) => {
+                                if (err) {
+                                    console.error('❌ Error setting CristianAdmin as admin:', err);
+                                } else {
+                                    console.log('👑 CristianAdmin set as administrator');
+                                }
+                            }
+                        );
+                    }
+                    return;
                 }
                 
-                req.user = { ...user, is_admin: true };
-                next();
+                // Create new admin user
+                const hashedPassword = await bcrypt.hash(adminPassword, 10);
+                
+                db.run(
+                    'INSERT INTO users (username, password, is_admin) VALUES (?, ?, 1)',
+                    [adminUsername, hashedPassword],
+                    function(err) {
+                        if (err) {
+                            console.error('❌ Error creating preset admin user:', err);
+                        } else {
+                            console.log('👑 Preset admin user CristianAdmin/CristianAdmin created successfully');
+                            console.log('🔑 Admin credentials: username=CristianAdmin, password=CristianAdmin');
+                        }
+                    }
+                );
             }
         );
-    });
+    } catch (error) {
+        console.error('❌ Error in createPresetAdminUser:', error);
+    }
 }
 
 // Routes
@@ -293,13 +351,23 @@ app.post('/api/login', async (req, res) => {
                     return res.status(401).json({ error: 'Invalid credentials' });
                 }
 
-                const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '24h' });
+                // Enhanced JWT token with admin status
+                const tokenPayload = { 
+                    id: user.id, 
+                    username: user.username, 
+                    is_admin: user.is_admin === 1 
+                };
+                const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '24h' });
                 
-                console.log('User logged in successfully:', username);
+                console.log('User logged in successfully:', username, '- Admin:', user.is_admin === 1);
                 res.json({
                     message: 'Login successful',
                     token,
-                    user: { id: user.id, username: user.username }
+                    user: { 
+                        id: user.id, 
+                        username: user.username,
+                        is_admin: user.is_admin === 1
+                    }
                 });
             }
         );
