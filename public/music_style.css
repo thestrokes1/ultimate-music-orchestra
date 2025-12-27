@@ -12,10 +12,10 @@ html {
 body {
     margin: 0;
     padding: 0;
-    background: linear-gradient(45deg, #1a1a2e, #16213e, #0f3460, #533483);
-    background-size: 100vw 100vh;
-    background-position: 0 0;
-    animation: gradientShift 15s ease infinite;
+    background: linear-gradient(135deg, #0a0e27 0%, #1a1a4d 15%, #2d1b4e 30%, #1f3a6d 45%, #0f2b5c 60%, #1d1f4f 75%, #1a1a2e 100%);
+    background-size: 300% 300%;
+    background-position: 0% 0%;
+    animation: gradientShift 20s ease infinite;
     font-family: 'Arial', sans-serif;
     overflow-x: hidden;
     min-height: 100vh;
@@ -27,61 +27,33 @@ body {
 @keyframes gradientShift {
     0% { 
         background-position: 0% 0%; 
-        background-size: 100vw 100vh;
     }
     25% { 
-        background-position: 50% 25%; 
-        background-size: 100vw 100vh;
+        background-position: 100% 25%; 
     }
     50% { 
-        background-position: 100% 50%; 
-        background-size: 100vw 100vh;
+        background-position: 50% 100%; 
     }
     75% { 
-        background-position: 50% 75%; 
-        background-size: 100vw 100vh;
+        background-position: 0% 50%; 
     }
     100% { 
-        background-position: 0% 100%; 
-        background-size: 100vw 100vh;
+        background-position: 0% 0%; 
     }
 }
 
 /* Responsive Background Scaling for different devices */
 @media (max-width: 768px) {
     body {
-        background-size: 100vw 100vh;
-        animation-duration: 12s; /* Slightly faster on mobile */
-    }
-    
-    @keyframes gradientShift {
-        0% { 
-            background-position: 0% 0%; 
-            background-size: 100vw 100vh;
-        }
-        25% { 
-            background-position: 75% 20%; 
-            background-size: 100vw 100vh;
-        }
-        50% { 
-            background-position: 100% 50%; 
-            background-size: 100vw 100vh;
-        }
-        75% { 
-            background-position: 25% 80%; 
-            background-size: 100vw 100vh;
-        }
-        100% { 
-            background-position: 0% 100%; 
-            background-size: 100vw 100vh;
-        }
+        background-size: 300% 300%;
+        animation-duration: 18s; /* Slightly slower on mobile for smooth effect */
     }
 }
 
 @media (max-width: 480px) {
     body {
-        background-size: 100vw 100vh;
-        animation-duration: 10s; /* Even faster on small screens */
+        background-size: 300% 300%;
+        animation-duration: 16s; /* Smooth on small screens */
     }
 }
 
@@ -572,19 +544,19 @@ body {
         0 8px 32px rgba(0, 0, 0, 0.6),
         0 0 30px rgba(0, 255, 255, 0.3),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    transition: all 0.4s ease;
+    transition: opacity 0.15s ease-in-out, visibility 0.15s ease-in-out;
     overflow: hidden;
     z-index: 10;
     position: relative;
     /* Default: hidden state */
-    max-height: 0;
+    visibility: hidden;
     opacity: 0;
     pointer-events: none;
 }
 
 /* Expanded state when toggle is active */
 .manager-content.open {
-    max-height: 800px;
+    visibility: visible;
     opacity: 1;
     pointer-events: auto;
 }
