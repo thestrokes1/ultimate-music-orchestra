@@ -602,6 +602,36 @@ async function loadGlobalUrls() {
 
 // Setup additional event listeners
 function setupEventListeners() {
+    // Toggle Manager Content Visibility
+    const toggleBtn = document.getElementById('toggle-manager');
+    const managerContent = document.getElementById('manager-content');
+    
+    if (toggleBtn && managerContent) {
+        toggleBtn.addEventListener('click', function(event) {
+            event.stopPropagation(); // Prevent event from bubbling
+            const isOpen = managerContent.classList.contains('open');
+            
+            if (isOpen) {
+                // Close the manager content
+                managerContent.classList.remove('open');
+                toggleBtn.setAttribute('aria-expanded', 'false');
+            } else {
+                // Open the manager content
+                managerContent.classList.add('open');
+                toggleBtn.setAttribute('aria-expanded', 'true');
+            }
+        });
+        
+        // Close manager content when clicking outside
+        document.addEventListener('click', function(event) {
+            const container = document.getElementById('manager-container');
+            if (container && !container.contains(event.target) && managerContent.classList.contains('open')) {
+                managerContent.classList.remove('open');
+                toggleBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+    
     window.addEventListener('click', function(event) {
         const modal = document.getElementById('auth-modal');
         if (event.target === modal) {

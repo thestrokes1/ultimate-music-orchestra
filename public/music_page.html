@@ -20,26 +20,27 @@
     <!-- Back to Home Link -->
     <a href="https://thestrokes1.github.io/Portfolio-Cristian/" class="back-link">← Back to Home</a>
 
-    <!-- Combined URL Manager & Controls Panel -->
-    <div id="unified-manager" class="unified-manager">
-        <!-- Collapsible Header with Toggle Button -->
-        <div class="manager-header">
-            <h3>🎵 Music Control Center</h3>
-            <button id="toggle-manager" class="toggle-btn">
-                <span class="toggle-icon">▼</span>
-            </button>
-        </div>
-        
-        <!-- Always Visible URL Input Section -->
-        <div class="always-visible-section">
-            <div class="url-input-container">
-                <input type="url" id="url-input" placeholder="Enter URL to add...">
-                <button id="add-url-btn" class="add-url-btn">Add URL</button>
-            </div>
-        </div>
+    <!-- Manager Container - Wraps toggle button and content together -->
+    <div id="manager-container" class="manager-container">
+        <!-- Small Toggle Button (Inline/Icon-sized) -->
+        <button id="toggle-manager" class="toggle-btn" aria-expanded="false" aria-controls="manager-content">
+            <span class="toggle-icon">▲</span>
+        </button>
         
         <!-- Collapsible Content Section -->
         <div id="manager-content" class="manager-content">
+            <!-- Title -->
+            <div class="manager-title">
+                <h3>🎵 Music Control Center</h3>
+            </div>
+            
+            <!-- URL Input Section -->
+            <div class="url-input-section">
+                <div class="url-input-container">
+                    <input type="url" id="url-input" placeholder="Enter URL to add...">
+                    <button id="add-url-btn" class="add-url-btn">Add URL</button>
+                </div>
+            </div>
             <!-- Statistics Section -->
             <div class="stats-section">
                 <div class="stat-item">
@@ -96,6 +97,7 @@
             </div>
         </div>
     </div>
+    </div> <!-- Close manager-container -->
 
     <!-- Authentication Modal -->
     <div id="auth-modal" class="modal" style="display: none;">
