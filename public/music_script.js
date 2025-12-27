@@ -605,10 +605,12 @@ function setupEventListeners() {
     // Toggle Manager Content Visibility
     const toggleBtn = document.getElementById('toggle-manager');
     const managerContent = document.getElementById('manager-content');
+    const container = document.getElementById('manager-container');
     
     if (toggleBtn && managerContent) {
         toggleBtn.addEventListener('click', function(event) {
             event.stopPropagation(); // Prevent event from bubbling
+            event.preventDefault(); // Prevent default button behavior
             const isOpen = managerContent.classList.contains('open');
             
             if (isOpen) {
@@ -624,12 +626,11 @@ function setupEventListeners() {
         
         // Close manager content when clicking outside
         document.addEventListener('click', function(event) {
-            const container = document.getElementById('manager-container');
             if (container && !container.contains(event.target) && managerContent.classList.contains('open')) {
                 managerContent.classList.remove('open');
                 toggleBtn.setAttribute('aria-expanded', 'false');
             }
-        });
+        }, true); // Use capture phase to ensure it runs before other listeners
     }
     
     window.addEventListener('click', function(event) {
