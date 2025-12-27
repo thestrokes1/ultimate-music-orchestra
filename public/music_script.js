@@ -602,35 +602,50 @@ async function loadGlobalUrls() {
 
 // Setup additional event listeners
 function setupEventListeners() {
-    // Toggle Manager Content Visibility
+    // Toggle Manager Content Visibility with robust state management
     const toggleBtn = document.getElementById('toggle-manager');
     const managerContent = document.getElementById('manager-content');
     const container = document.getElementById('manager-container');
     
+    // Use an explicit state variable instead of relying only on classList
+    let managerIsOpen = false;
+    
     if (toggleBtn && managerContent) {
+        // Main toggle click handler
         toggleBtn.addEventListener('click', function(event) {
-            event.stopPropagation(); // Prevent event from bubbling
-            event.preventDefault(); // Prevent default button behavior
-            const isOpen = managerContent.classList.contains('open');
+            event.stopPropagation();
+            event.preventDefault();
             
-            if (isOpen) {
-                // Close the manager content
-                managerContent.classList.remove('open');
-                toggleBtn.setAttribute('aria-expanded', 'false');
-            } else {
-                // Open the manager content
+            // Toggle the state
+            managerIsOpen = !managerIsOpen;
+            
+            // Apply the state to the DOM
+            if (managerIsOpen) {
                 managerContent.classList.add('open');
                 toggleBtn.setAttribute('aria-expanded', 'true');
+                console.log('✅ Manager opened');
+            } else {
+                managerContent.classList.remove('open');
+                toggleBtn.setAttribute('aria-expanded', 'false');
+                console.log('✅ Manager closed');
             }
         });
         
-        // Close manager content when clicking outside
+        // Close manager when clicking outside (with proper handling)
         document.addEventListener('click', function(event) {
-            if (container && !container.contains(event.target) && managerContent.classList.contains('open')) {
+            // Only close if manager is open AND click is outside AND we're not clicking the toggle button
+            if (managerIsOpen && container && !container.contains(event.target)) {
+                managerIsOpen = false;
                 managerContent.classList.remove('open');
                 toggleBtn.setAttribute('aria-expanded', 'false');
+                console.log('✅ Manager closed (outside click)');
             }
-        }, true); // Use capture phase to ensure it runs before other listeners
+        }, false); // Use bubbling phase instead of capture
+        
+        // Prevent closing when clicking inside the manager content
+        managerContent.addEventListener('click', function(event) {
+            event.stopPropagation();
+        });
     }
     
     window.addEventListener('click', function(event) {
